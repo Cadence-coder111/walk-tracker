@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Walk Tracker</title>
+  <style>
+    :root {
+      box-sizing: border-box;
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+      --bg: #f4f7f2;
+      --card: #fff;
+      --text: #1d2b20;
+      --muted: #6b7a6e;
+      --accent: #2e8b57;
+      --stop: #d64545;
+      --line: #e1e8df
+    }
+
+    @media (prefers-color-scheme:dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #121a14;
+        --card: #1b261e;
+        --text: #e8f0e9;
+        --muted: #93a597;
+        --accent: #3fb97a;
+        --stop: #e86a6a;
+        --line: #2a382d;
+        color-scheme: dark
+      }
+    }
+
+    :root[data-theme="dark"] {
+      --bg: #121a14;
+      --card: #1b261e;
+      --text: #e8f0e9;
+      --muted: #93a597;
+      --accent: #3fb97a;
+      --stop: #e86a6a;
+      --line: #2a382d;
+      color-scheme: dark
+    }
+
+    html,
+    body {
+      margin: 0
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh
+    }
+
+    main {
+      max-width: 460px;
+      margin: 0 auto;
+      padding: 20px 16px 40px
+    }
+
+    h1 {
+      font-size: 20px;
+      margin: 0 0 16px
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 22px;
+      margin-bottom: 16px
+    }
+
+    .big {
+      font-size: 64px;
+      font-weight: 700;
+      line-height: 1;
+      text-align: center
+    }
+
+    .big small {
+      font-size: 22px;
+      font-weight: 500;
+      color: var(--muted)
+    }
+
+    .row {
+      display: flex;
+      justify-content: space-around;
+      margin-top: 18px;
+      text-align: center
+    }
+
+    .row div b {
+      display: block;
+      font-size: 20px
+    }
+
+    .row div span {
+      font-size: 12px;
+      color: var(--muted)
+    }
+
+    .btns {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px
+    }
+
+    button {
+      flex: 1;
+      border: 0;
+      border-radius: 14px;
+      padding: 16px;
+      font-size: 17px;
+      font-weight: 600;
+      color: #fff;
+      background: var(--accent);
+      cursor: pointer
+    }
+
+    button.stop {
+      background: var(--stop)
+    }
+
+    button.ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--line)
+    }
+
+    #status {
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 12px;
+      min-height: 18px
+    }
+
+    h2 {
+      font-size: 15px;
+      margin: 0 0 10px
+    }
+
+    #route {
+      width: 100%;
+      height: 180px;
+      border-radius: 14px;
+      background: var(--bg);
+      display: block
+    }
+
+    #kgbox {
+      text-align: center;
+      margin-top: 14px;
+      font-size: 13px;
+      color: var(--muted)
+    }
+
+    #kg {
+      width: 64px;
+      padding: 6px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      text-align: center
+    }
+
+    .hist {
+      display: flex;
+      justify-content: space-between;
+      padding: 9px 0;
+      border-bottom: 1px solid var(--line);
+      font-size: 15px
+    }
+
+    .hist:last-child {
+      border: 0
+    }
+
+    .hist span:first-child {
+      color: var(--muted)
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <h1>🚶 Walk Tracker</h1>
+    <div class="card">
+      <div class="big"><span id="km">0.00</span> <small>km</small></div>
+      <div class="row">
+        <div><b id="time">00:00:00</b><span>Time</span></div>
+        <div><b id="speed">0.0</b><span>km/h</span></div>
+        <div><b id="today">0.00</b><span>Today (km)</span></div>
+        <div><b id="cal">0</b><span>kcal</span></div>
+      </div>
+      <div style="position:relative;margin-top:18px"><canvas id="route"></canvas>
+        <div id="hint"
+          style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:14px;pointer-events:none">
+          Your route will appear here</div>
+      </div>
+      <div id="kgbox">Your weight (kg): <input id="kg" type="number" value="70" min="30" max="250"></div>
+      <div class="btns">
+        <button id="main">Start</button>
+        <button id="stop" class="stop" style="display:none">Stop &amp; save</button>
+      </div>
+      <div id="status">Press Start, then walk. Keep this page open.</div>
+    </div>
+    <div class="card">
+      <h2>This week (km)</h2>
+      <svg id="chart" viewBox="0 0 300 125" style="width:100%;margin-bottom:18px"></svg>
+      <h2>Your recent days</h2>
+      <div id="hist"></div>
+      <button class="ghost" id="clear" style="margin-top:12px;padding:10px;font-size:14px">Clear history</button>
+    </div>
+  </main>
+  <script>
+    (function () {
+      var KEY = "walkTracker.v1";
+      var $ = function (i) { return document.getElementById(i) };
+      var pts = [], dist = 0, elapsed = 0, last = null, watchId = null, timer = null, startTs = 0, running = false, lock = null;
+
+      function load() { try { return JSON.parse(localStorage.getItem(KEY)) || {} } catch (e) { return {} } }
+      function save(d) { try { localStorage.setItem(KEY, JSON.stringify(d)) } catch (e) { } }
+      function dayKey(d) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0") }
+      function fmt(s) { var h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60); s = Math.floor(s % 60); return [h, m, s].map(function (n) { return String(n).padStart(2, "0") }).join(":") }
+
+      function hav(a, b) {
+        var R = 6371000, r = Math.PI / 180, dLat = (b.lat - a.lat) * r, dLon = (b.lon - a.lon) * r;
+        var x = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        return 2 * R * Math.asin(Math.sqrt(x));
+      }
+
+      function render() {
+        var secs = running ? elapsed + (Date.now() - startTs) / 1000 : elapsed;
+        $("km").textContent = (dist / 1000).toFixed(2);
+        $("time").textContent = fmt(secs);
+        $("speed").textContent = secs > 5 ? ((dist / 1000) / (secs / 3600)).toFixed(1) : "0.0";
+        var h = load(), t = h[dayKey(new Date())];
+        $("today").textContent = (((t ? t.m : 0) + dist) / 1000).toFixed(2);
+        $("cal").textContent = Math.round(dist / 1000 * (parseFloat($("kg").value) || 70) * 0.57);
+      }
+
+      function renderHist() {
+        var h = load(), keys = Object.keys(h).sort().reverse().slice(0, 7), box = $("hist");
+        box.innerHTML = "";
+        if (!keys.length) { box.innerHTML = '<div class="hist"><span>No walks saved yet</span></div>'; return }
+        keys.forEach(function (k) {
+          var d = document.createElement("div"); d.className = "hist";
+          d.innerHTML = "<span>" + k + "</span><b>" + (h[k].m / 1000).toFixed(2) + " km · " + fmt(h[k].s) + "</b>";
+          box.appendChild(d);
+        });
+      }
+
+      function drawRoute(p) {
+        var cv = $("route"), w = cv.width = cv.clientWidth * 2, hh = cv.height = cv.clientHeight * 2, x = cv.getContext("2d");
+        var cs = getComputedStyle(document.documentElement);
+        function col(n) { return cs.getPropertyValue(n).trim() }
+        x.clearRect(0, 0, w, hh);
+        $("hint").style.display = p.length < 2 ? "flex" : "none";
+        if (p.length < 2) return;
+        var a = 1e9, b = -1e9, c = 1e9, d = -1e9;
+        p.forEach(function (o) { if (o.lat < a) a = o.lat; if (o.lat > b) b = o.lat; if (o.lon < c) c = o.lon; if (o.lon > d) d = o.lon });
+        var kx = Math.cos((a + b) / 2 * Math.PI / 180), sx = (d - c) * kx || 1e-6, sy = (b - a) || 1e-6;
+        var sc = Math.min((w - 60) / sx, (hh - 60) / sy), ox = (w - sx * sc) / 2, oy = (hh - sy * sc) / 2;
+        function X(o) { return ox + (o.lon - c) * kx * sc }
+        function Y(o) { return hh - oy - (o.lat - a) * sc }
+        x.lineWidth = 6; x.lineJoin = "round"; x.lineCap = "round"; x.strokeStyle = col("--accent"); x.beginPath();
+        p.forEach(function (o, i) { i ? x.lineTo(X(o), Y(o)) : x.moveTo(X(o), Y(o)) }); x.stroke();
+        [[p[0], col("--accent")], [p[p.length - 1], col("--stop")]].forEach(function (e) { x.fillStyle = e[1]; x.beginPath(); x.arc(X(e[0]), Y(e[0]), 12, 0, 7); x.fill() });
+      }
+      function showLast() {
+        var r = []; try { r = JSON.parse(localStorage.getItem(KEY + ".route")) || [] } catch (e) { }
+        drawRoute(r);
+      }
+      function drawChart() {
+        var h = load(), days = [], i, max = 1, s = "";
+        for (i = 6; i >= 0; i--) { var d = new Date(); d.setDate(d.getDate() - i); var k = dayKey(d); days.push({ l: d.toLocaleDateString(undefined, { weekday: "short" }), v: h[k] ? h[k].m / 1000 : 0 }) }
+        days.forEach(function (x) { if (x.v > max) max = x.v });
+        days.forEach(function (x, j) {
+          var bh = x.v / max * 80, bx = 12 + j * 41;
+          s += '<rect x="' + bx + '" y="' + (100 - bh) + '" width="28" height="' + Math.max(bh, 2) + '" rx="5" fill="var(--accent)"/>';
+          s += '<text x="' + (bx + 14) + '" y="118" font-size="11" text-anchor="middle" fill="var(--muted)">' + x.l + '</text>';
+          if (x.v > 0) s += '<text x="' + (bx + 14) + '" y="' + (94 - bh) + '" font-size="10" text-anchor="middle" fill="var(--text)">' + x.v.toFixed(1) + '</text>';
+        });
+        $("chart").innerHTML = s;
+      }
+      function onPos(p) {
+        var c = p.coords;
+        if (c.accuracy > 30) { $("status").textContent = "Weak GPS signal (±" + Math.round(c.accuracy) + " m)…"; return }
+        $("status").textContent = "Tracking · GPS ±" + Math.round(c.accuracy) + " m";
+        var pt = { lat: c.latitude, lon: c.longitude };
+        if (last) {
+          var d = hav(last, pt);
+          if (d >= Math.max(3, c.accuracy / 3) && d < 200) { dist += d; last = pt; pts.push(pt); drawRoute(pts) }
+        } else { last = pt; pts.push(pt) }
+      }
+      function onErr(e) {
+        $("status").textContent = e.code === 1 ? "Location blocked. Please allow location access for this page." : "Can’t get your location right now.";
+      }
+
+      async function wake() { try { if (navigator.wakeLock) lock = await navigator.wakeLock.request("screen") } catch (e) { } }
+
+      function start() {
+        if (!navigator.geolocation) { $("status").textContent = "This browser has no location support."; return }
+        running = true; startTs = Date.now(); last = null; if (!dist && !elapsed) pts = []; drawRoute(pts);
+        watchId = navigator.geolocation.watchPosition(onPos, onErr, { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 });
+        timer = setInterval(render, 1000); wake();
+        $("main").textContent = "Pause"; $("stop").style.display = "";
+        $("status").textContent = "Finding GPS…";
+      }
+      function pause() {
+        running = false; elapsed += (Date.now() - startTs) / 1000;
+        navigator.geolocation.clearWatch(watchId); clearInterval(timer);
+        try { if (lock) lock.release() } catch (e) { }
+        $("main").textContent = "Resume"; $("status").textContent = "Paused"; render();
+      }
+      function stopSave() {
+        if (running) pause();
+        if (dist > 0 || elapsed > 0) {
+          var h = load(), k = dayKey(new Date()), t = h[k] || { m: 0, s: 0 };
+          t.m += dist; t.s += elapsed; h[k] = t; save(h);
+          var step = Math.max(1, Math.ceil(pts.length / 200));
+          try { localStorage.setItem(KEY + ".route", JSON.stringify(pts.filter(function (_, i) { return i % step === 0 }))) } catch (e) { }
+        }
+        dist = 0; elapsed = 0; last = null; pts = [];
+        $("main").textContent = "Start"; $("stop").style.display = "none";
+        $("status").textContent = "Saved ✓"; render(); renderHist(); drawChart(); showLast();
+      }
+
+      $("main").onclick = function () { running ? pause() : start() };
+      $("stop").onclick = stopSave;
+      try { var w = localStorage.getItem(KEY + ".kg"); if (w) $("kg").value = w } catch (e) { }
+      $("kg").onchange = function () { try { localStorage.setItem(KEY + ".kg", $("kg").value) } catch (e) { } render() };
+      drawChart(); showLast();
+      $("clear").onclick = function () { if (confirm("Delete all saved walks?")) { save({}); renderHist(); render() } };
+      document.addEventListener("visibilitychange", function () { if (running && document.visibilityState === "visible") wake() });
+      render(); renderHist();
+    })();
+  </script>
+</body>
+
+</html>
